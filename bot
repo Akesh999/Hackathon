@@ -269,4 +269,38 @@ window.addEventListener('load', () => {
 });
  
 // CSS for shake can be added if desired
+
+import csv
+import os
+from flask import Blueprint, render_template, request, redirect, url_for, session
+ 
+main = Blueprint('main', __name__)
+ 
+DATA_FILE = 'user_data.csv'
+ 
+def ensure_data_file():
+    if not os.path.exists(DATA_FILE):
+        with open(DATA_FILE, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=['username', 'password'])
+            writer.writeheader()
+ 
+@main.route("/login", methods=["GET", "POST"])
+def login():
+    ensure_data_file()
+    error = None
+ 
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+ 
+        with open(DATA_FILE, newline="") as f:
+            reader = csv.DictReader(f)
+            if any(row["username"] == username and row["password"] == password for row in reader):
+                session["user"] = username
+                return redirect(url_for("main.bot"))
+ 
+        error = "Invalid credentials"
+ 
+    return render_template("login.html", error=error)
+ 
  
