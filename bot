@@ -1,0 +1,272 @@
+from app import create_app
+ 
+app = create_app()
+ 
+if __name__ == "__main__":
+    app.run(debug=True)
+app.run - This website is for sale! - app Resources and Information.
+This website is for sale! app.run is your first and best source for all of the information you’re looking for. From general topics to more of what you would expect to find here, app.run has it all....
+ 
+from flask import Flask
+import os
+ 
+def create_app():
+    app = Flask(
+        __name__,
+        static_folder="static",
+        template_folder="templates"
+    )
+    app.config['SECRET_KEY'] = os.urandom(24)
+ 
+    # Import and register routes blueprint
+    from app.routes import main
+    app.register_blueprint(main)
+ 
+    return app
+ 
+from flask import (
+    Blueprint, render_template, request, redirect,
+    url_for, session
+)
+import csv, os
+ 
+main = Blueprint('main', __name__)
+ 
+DATA_FILE = os.path.join(
+    os.path.dirname(__file__), '..', 'data', 'users.csv'
+)
+ 
+def ensure_data_file():
+    """
+    Create users.csv with header if it doesn't exist.
+    """
+    if not os.path.exists(DATA_FILE):
+        os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+        with open(DATA_FILE, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['username','password'])
+ 
+@main.route('/')
+def index():
+    return redirect(url_for('main.login'))
+ 
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    ensure_data_file()
+    error = None
+ 
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        # Validate against CSV
+        with open(DATA_FILE, newline='') as f:
+            reader = csv.DictReader(f)
+            if any(row['username'] == username and row['password'] == password for row in reader):
+                session['user'] = username
+                return redirect(url_for('main.bot'))
+        error = 'Invalid credentials'
+ 
+    return render_template('login.html', error=error)
+ 
+@main.route('/signup', methods=['GET', 'POST'])
+def signup():
+    ensure_data_file()
+    error = None
+ 
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        confirm = request.form['confirm_password']
+ 
+        if password != confirm:
+            error = 'Passwords do not match'
+        else:
+            with open(DATA_FILE, newline='') as f:
+                reader = csv.DictReader(f)
+                if any(row['username'] == username for row in reader):
+                    error = 'Username already exists'
+ 
+        if not error:
+            with open(DATA_FILE, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([username, password])
+            return redirect(url_for('main.login'))
+ 
+    return render_template('signup.html', error=error)
+ 
+@main.route('/bot')
+def bot():
+    if 'user' not in session:
+        return redirect(url_for('main.login'))
+    return render_template('bot.html', user=session['user'])
+ 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - WMA AI Chatbot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-section">
+            <h1>Welcome to WMA AI Chatbot</h1>
+        </div>
+        <div class="form-section">
+            <form action="{{ url_for('main.login') }}" method="post" class="form animated">
+                <h2>Login</h2>
+                {% if error %}<p class="error">{{ error }}</p>{% endif %}
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit" class="btn">Login</button>
+                <p>Don't have an account? <a href="{{ url_for('main.signup') }}">Sign Up</a></p>
+            </form>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
+ 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - WMA AI Chatbot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-section">
+            <h1>Create Your Account</h1>
+        </div>
+        <div class="form-section">
+            <form action="{{ url_for('main.signup') }}" method="post" class="form animated">
+                <h2>Sign Up</h2>
+                {% if error %}<p class="error">{{ error }}</p>{% endif %}
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <input type="password" name="confirm_password" placeholder="Confirm Password" required>
+                <button type="submit" class="btn">Create Account</button>
+                <p>Already have an account? <a href="{{ url_for('main.login') }}">Login</a></p>
+            </form>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
+ 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot - WMA AI Chatbot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="bot-container">
+        <h2>Welcome, {{ user }}!</h2>
+        <!-- Chatbot UI goes here -->
+    </div>
+</body>
+</html>
+ 
+/* Background animation */
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(-45deg, #0D1B2A, #1B263B, #415A77, #778DA9);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    font-family: 'Segoe UI', sans-serif;
+    color: #fff;
+}
+ 
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+ 
+/* Layout */
+.container {
+    display: flex;
+    height: 100vh;
+}
+ 
+.welcome-section, .form-section {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+ 
+/* Form styling */
+.form {
+    background: rgba(255,255,255,0.1);
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    opacity: 0;
+    transform: translateY(20px);
+    animation: slideIn 1s ease forwards;
+}
+ 
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+ 
+input {
+    width: 100%;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    border: none;
+    border-radius: 0.5rem;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+}
+ 
+input::placeholder {
+    color: #eee;
+}
+ 
+.btn {
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: #1B263B;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.2s;
+}
+ 
+.btn:hover {
+    transform: scale(1.05);
+}
+ 
+.error {
+    color: #FF6B6B;
+    font-size: 0.9rem;
+}
+ 
+// Add any interactive or animated behaviors here
+// Example: shake form on error
+ 
+window.addEventListener('load', () => {
+    const form = document.querySelector('.form');
+    if (document.querySelector('.error')) {
+        form.classList.add('shake');
+    }
+});
+ 
+// CSS for shake can be added if desired
+ 
